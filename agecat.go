@@ -24,16 +24,6 @@ func (g Gender) Character() string {
 	return genders[g]
 }
 
-func (g Gender) String() string {
-	genders := [...]string{
-		"Universal",
-		"Male",
-		"Female",
-	}
-
-	return genders[g]
-}
-
 type CategoryGroupType int
 
 const (
@@ -41,7 +31,7 @@ const (
 	Masters
 )
 
-func (a CategoryGroupType) isUnder() bool {
+func (a CategoryGroupType) isJunior() bool {
 	return a == Juniors
 }
 
@@ -125,11 +115,8 @@ type categoryGroup struct {
 // gender element is omitted.
 // e.g. "V60" for People Over 60
 func AgeCategory(gender Gender, dateOfBirth time.Time, categoryGroups ...*categoryGroup) string {
-	// Normalize date of birth to UTC
-	dob := time.Date(dateOfBirth.Year(), dateOfBirth.Month(), dateOfBirth.Day(), 0, 0, 0, 0, Location)
-
 	for _, categoryGroup := range categoryGroups {
-		if s := categoryGroup.categorize(gender, dob); s != nil {
+		if s := categoryGroup.categorize(gender, dateOfBirth); s != nil {
 			return *s
 		}
 	}
@@ -140,13 +127,6 @@ func AgeCategory(gender Gender, dateOfBirth time.Time, categoryGroups ...*catego
 // NewCategoryGroup creates a categoryGroup and returns its reference
 // The meanings of each parameter are explained in the categoryGroup struct
 func NewCategoryGroup(gender Gender, categoryGroupType CategoryGroupType, operativeDate time.Time, cutOffDate *time.Time, ages []int) *categoryGroup {
-	// Normalize dates to UTC
-	operativeDate = time.Date(operativeDate.Year(), operativeDate.Month(), operativeDate.Day(), 0, 0, 0, 0, Location)
-	if cutOffDate != nil {
-		d := time.Date(cutOffDate.Year(), cutOffDate.Month(), cutOffDate.Day(), 0, 0, 0, 0, Location)
-		cutOffDate = &d
-	}
-
 	return &categoryGroup{
 		Gender:            gender,
 		CategoryGroupType: categoryGroupType,
@@ -161,7 +141,7 @@ func (c *categoryGroup) categorize(gender Gender, dob time.Time) *string {
 		return nil
 	}
 
-	if c.CategoryGroupType == Juniors {
+	if c.CategoryGroupType.isJunior() {
 		return c.categorizeJuniors(gender, dob)
 	}
 

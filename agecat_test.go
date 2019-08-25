@@ -357,7 +357,7 @@ func TestAgeCategory(t *testing.T) {
 		}
 	})
 
-	t.Run("normalizes dates", func(t *testing.T) {
+	t.Run("timezones don't affect age calculations", func(t *testing.T) {
 		var testCases []*AgeCategoryTestCase
 		var dob time.Time
 		var newYork, moscow, tokyo *time.Location
