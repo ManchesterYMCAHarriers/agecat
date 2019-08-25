@@ -359,40 +359,72 @@ func TestAgeCategory(t *testing.T) {
 
 	t.Run("timezones don't affect age calculations", func(t *testing.T) {
 		var testCases []*AgeCategoryTestCase
-		var dob time.Time
-		var newYork, moscow, tokyo *time.Location
-		newYork, _ = time.LoadLocation("America/New_York")
-		moscow, _ = time.LoadLocation("Europe/Moscow")
-		tokyo, _ = time.LoadLocation("Asia/Tokyo")
-		operativeDate := time.Date(2020, 8, 31, 0, 12, 6, 976, newYork)
-		cutOffDate := time.Date(2019, 12, 31, 23, 44, 12, 456, tokyo)
+		var dob, operativeDate, cutOffDate time.Time
+		var midway, fiji *time.Location
+		midway, _ = time.LoadLocation("Pacific/Midway")
+		fiji, _ = time.LoadLocation("Pacific/Fiji")
+		operativeDate = time.Date(2020, 8, 31, 0, 0, 0, 0, midway)
+		cutOffDate = time.Date(2019, 12, 31, 23, 59, 59, 999, midway)
 
 		categoryGroups := make([]*categoryGroup, 1)
 
 		categoryGroups[0] = NewCategoryGroup(Female, Juniors, operativeDate, &cutOffDate, []int{13, 15, 17, 20})
 
-		dob = time.Date(2007, 8, 31, 23, 59, 59, 999, moscow)
+		dob = time.Date(2007, 8, 31, 23, 59, 59, 999, fiji)
 		testCases = append(testCases, &AgeCategoryTestCase{
 			Gender:              Female,
 			DateOfBirth:         dob,
 			ExpectedAgeCategory: "JF15",
 		})
 
-		dob = time.Date(2007, 9, 1, 0, 0, 0, 0, moscow)
+		dob = time.Date(2007, 9, 1, 0, 0, 0, 0, fiji)
 		testCases = append(testCases, &AgeCategoryTestCase{
 			Gender:              Female,
 			DateOfBirth:         dob,
 			ExpectedAgeCategory: "JF13",
 		})
 
-		dob = time.Date(1999, 12, 31, 23, 59, 59, 999, moscow)
+		dob = time.Date(1999, 12, 31, 23, 59, 59, 999, fiji)
 		testCases = append(testCases, &AgeCategoryTestCase{
 			Gender:              Female,
 			DateOfBirth:         dob,
 			ExpectedAgeCategory: "FSEN",
 		})
 
-		dob = time.Date(2000, 1, 1, 0, 0, 0, 0, moscow)
+		dob = time.Date(2000, 1, 1, 0, 0, 0, 0, fiji)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "JF20",
+		})
+
+		operativeDate = time.Date(2020, 8, 31, 0, 0, 0, 0, fiji)
+		cutOffDate = time.Date(2019, 12, 31, 23, 59, 59, 999, fiji)
+
+		categoryGroups[0] = NewCategoryGroup(Female, Juniors, operativeDate, &cutOffDate, []int{13, 15, 17, 20})
+
+		dob = time.Date(2007, 8, 31, 23, 59, 59, 999, midway)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "JF15",
+		})
+
+		dob = time.Date(2007, 9, 1, 0, 0, 0, 0, midway)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "JF13",
+		})
+
+		dob = time.Date(1999, 12, 31, 23, 59, 59, 999, midway)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "FSEN",
+		})
+
+		dob = time.Date(2000, 1, 1, 0, 0, 0, 0, midway)
 		testCases = append(testCases, &AgeCategoryTestCase{
 			Gender:              Female,
 			DateOfBirth:         dob,
