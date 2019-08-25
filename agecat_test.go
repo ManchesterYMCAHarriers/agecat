@@ -10,7 +10,7 @@ type AgeCategoryTestCase struct {
 	Gender              Gender
 	DateOfBirth         time.Time
 	ExpectedAgeCategory string
-	AgeGroups           []*AgeGroups
+	CategoryGroups      []*categoryGroup
 }
 
 func TestAgeCategory(t *testing.T) {
@@ -57,7 +57,7 @@ func TestAgeCategory(t *testing.T) {
 		})
 
 		for _, testCase := range testCases {
-			got := AgeCategory(testCase.Gender, testCase.DateOfBirth.Year(), testCase.DateOfBirth.Month(), testCase.DateOfBirth.Day())
+			got := AgeCategory(testCase.Gender, testCase.DateOfBirth)
 
 			if got != testCase.ExpectedAgeCategory {
 				t.Errorf("got %s, want %s for date of birth %s", got, testCase.ExpectedAgeCategory, testCase.DateOfBirth.Format("2006-01-02"))
@@ -69,23 +69,10 @@ func TestAgeCategory(t *testing.T) {
 		var testCases []*AgeCategoryTestCase
 		var dob time.Time
 
-		ageGroups := make([]*AgeGroups, 2)
+		categoryGroups := make([]*categoryGroup, 2)
 
-		ageGroups[0] = &AgeGroups{
-			Gender:        Female,
-			AgeGroupType:  Juniors,
-			OperativeDate: time.Now().UTC().Truncate(time.Hour * 24),
-			CutOffDate:    nil,
-			Groups:        []int{13, 15, 17, 20},
-		}
-
-		ageGroups[1] = &AgeGroups{
-			Gender:        Male,
-			AgeGroupType:  Juniors,
-			OperativeDate: time.Now().UTC().Truncate(time.Hour * 24),
-			CutOffDate:    nil,
-			Groups:        []int{13, 15, 17, 20},
-		}
+		categoryGroups[0] = NewCategoryGroup(Female, Juniors, time.Now().UTC().Truncate(time.Hour*24), nil, []int{13, 15, 17, 20})
+		categoryGroups[1] = NewCategoryGroup(Male, Juniors, time.Now().UTC().Truncate(time.Hour*24), nil, []int{13, 15, 17, 20})
 
 		dob = time.Now().AddDate(-12, 0, 0).UTC().Truncate(time.Hour * 24)
 		testCases = append(testCases, &AgeCategoryTestCase{
@@ -181,7 +168,7 @@ func TestAgeCategory(t *testing.T) {
 		})
 
 		for _, testCase := range testCases {
-			got := AgeCategory(testCase.Gender, testCase.DateOfBirth.Year(), testCase.DateOfBirth.Month(), testCase.DateOfBirth.Day(), ageGroups...)
+			got := AgeCategory(testCase.Gender, testCase.DateOfBirth, categoryGroups...)
 
 			if got != testCase.ExpectedAgeCategory {
 				t.Errorf("got %s, want %s for date of birth %s", got, testCase.ExpectedAgeCategory, testCase.DateOfBirth.Format("2006-01-02"))
@@ -193,25 +180,12 @@ func TestAgeCategory(t *testing.T) {
 		var testCases []*AgeCategoryTestCase
 		var dob time.Time
 
-		ageGroups := make([]*AgeGroups, 2)
+		categoryGroups := make([]*categoryGroup, 2)
 
 		// Many races award prizes for women over 35, but not men over 35.
 		// I don't know the reason why... misogyny? (Or misandry!)
-		ageGroups[0] = &AgeGroups{
-			Gender:        Female,
-			AgeGroupType:  Masters,
-			OperativeDate: time.Now().UTC().Truncate(time.Hour * 24),
-			CutOffDate:    nil,
-			Groups:        []int{35, 40, 45, 50, 55, 60, 65, 70, 75},
-		}
-
-		ageGroups[1] = &AgeGroups{
-			Gender:        Male,
-			AgeGroupType:  Masters,
-			OperativeDate: time.Now().UTC().Truncate(time.Hour * 24),
-			CutOffDate:    nil,
-			Groups:        []int{40, 45, 50, 55, 60, 65, 70, 75},
-		}
+		categoryGroups[0] = NewCategoryGroup(Female, Masters, time.Now().UTC().Truncate(time.Hour*24), nil, []int{35, 40, 45, 50, 55, 60, 65, 70, 75})
+		categoryGroups[1] = NewCategoryGroup(Male, Masters, time.Now().UTC().Truncate(time.Hour*24), nil, []int{40, 45, 50, 55, 60, 65, 70, 75})
 
 		dob = time.Now().AddDate(-35, 0, 1).UTC().Truncate(time.Hour * 24)
 		testCases = append(testCases, &AgeCategoryTestCase{
@@ -275,7 +249,7 @@ func TestAgeCategory(t *testing.T) {
 		})
 
 		for _, testCase := range testCases {
-			got := AgeCategory(testCase.Gender, testCase.DateOfBirth.Year(), testCase.DateOfBirth.Month(), testCase.DateOfBirth.Day(), ageGroups...)
+			got := AgeCategory(testCase.Gender, testCase.DateOfBirth, categoryGroups...)
 
 			if got != testCase.ExpectedAgeCategory {
 				t.Errorf("got %s, want %s for date of birth %s", got, testCase.ExpectedAgeCategory, testCase.DateOfBirth.Format("2006-01-02"))
@@ -289,23 +263,10 @@ func TestAgeCategory(t *testing.T) {
 		operativeDate := time.Date(2020, 8, 31, 0, 0, 0, 0, Location)
 		cutOffDate := time.Date(2019, 12, 31, 0, 0, 0, 0, Location)
 
-		ageGroups := make([]*AgeGroups, 2)
+		categoryGroups := make([]*categoryGroup, 2)
 
-		ageGroups[0] = &AgeGroups{
-			Gender:        Female,
-			AgeGroupType:  Juniors,
-			OperativeDate: operativeDate,
-			CutOffDate:    &cutOffDate,
-			Groups:        []int{13, 15, 17, 20},
-		}
-
-		ageGroups[1] = &AgeGroups{
-			Gender:        Male,
-			AgeGroupType:  Juniors,
-			OperativeDate: operativeDate,
-			CutOffDate:    &cutOffDate,
-			Groups:        []int{13, 15, 17, 20},
-		}
+		categoryGroups[0] = NewCategoryGroup(Female, Juniors, operativeDate, &cutOffDate, []int{13, 15, 17, 20})
+		categoryGroups[1] = NewCategoryGroup(Male, Juniors, operativeDate, &cutOffDate, []int{13, 15, 17, 20})
 
 		dob = operativeDate.AddDate(-10, 0, 0).UTC().Truncate(time.Hour * 24)
 		testCases = append(testCases, &AgeCategoryTestCase{
@@ -388,7 +349,58 @@ func TestAgeCategory(t *testing.T) {
 		})
 
 		for _, testCase := range testCases {
-			got := AgeCategory(testCase.Gender, testCase.DateOfBirth.Year(), testCase.DateOfBirth.Month(), testCase.DateOfBirth.Day(), ageGroups...)
+			got := AgeCategory(testCase.Gender, testCase.DateOfBirth, categoryGroups...)
+
+			if got != testCase.ExpectedAgeCategory {
+				t.Errorf("got %s, want %s for date of birth %s", got, testCase.ExpectedAgeCategory, testCase.DateOfBirth.Format("2006-01-02"))
+			}
+		}
+	})
+
+	t.Run("normalizes dates", func(t *testing.T) {
+		var testCases []*AgeCategoryTestCase
+		var dob time.Time
+		var newYork, moscow, tokyo *time.Location
+		newYork, _ = time.LoadLocation("America/New_York")
+		moscow, _ = time.LoadLocation("Europe/Moscow")
+		tokyo, _ = time.LoadLocation("Asia/Tokyo")
+		operativeDate := time.Date(2020, 8, 31, 0, 12, 6, 976, newYork)
+		cutOffDate := time.Date(2019, 12, 31, 23, 44, 12, 456, tokyo)
+
+		categoryGroups := make([]*categoryGroup, 1)
+
+		categoryGroups[0] = NewCategoryGroup(Female, Juniors, operativeDate, &cutOffDate, []int{13, 15, 17, 20})
+
+		dob = time.Date(2007, 8, 31, 23, 59, 59, 999, moscow)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "JF15",
+		})
+
+		dob = time.Date(2007, 9, 1, 0, 0, 0, 0, moscow)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "JF13",
+		})
+
+		dob = time.Date(1999, 12, 31, 23, 59, 59, 999, moscow)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "FSEN",
+		})
+
+		dob = time.Date(2000, 1, 1, 0, 0, 0, 0, moscow)
+		testCases = append(testCases, &AgeCategoryTestCase{
+			Gender:              Female,
+			DateOfBirth:         dob,
+			ExpectedAgeCategory: "JF20",
+		})
+
+		for _, testCase := range testCases {
+			got := AgeCategory(testCase.Gender, testCase.DateOfBirth, categoryGroups...)
 
 			if got != testCase.ExpectedAgeCategory {
 				t.Errorf("got %s, want %s for date of birth %s", got, testCase.ExpectedAgeCategory, testCase.DateOfBirth.Format("2006-01-02"))

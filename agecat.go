@@ -34,31 +34,34 @@ func (g Gender) String() string {
 	return genders[g]
 }
 
-type AgeGroupType int
+type CategoryGroupType int
 
 const (
-	Juniors AgeGroupType = iota
+	Juniors CategoryGroupType = iota
 	Masters
 )
 
-func (a AgeGroupType) isUnder() bool {
+func (a CategoryGroupType) isUnder() bool {
 	return a == Juniors
 }
 
 var Location, _ = time.LoadLocation("UTC")
 
-// AgeGroups are used to determine the category for junior and masters
+// Category groups are used to determine the category for junior and masters
 // athletes.
 //
-// AgeGroups should be defined as per your competition rules; you can include
-// or omit AgeGroups as necessary
-type AgeGroups struct {
+// Category groups should be defined as per your competition rules; you can
+// include/omit categoryGroup as necessary; e.g. if your competition doesn't
+// cater for juniors, only include CategoryGroups for masters.
+//
+// Create a category group with the NewCategoryGroup function.
+type categoryGroup struct {
 	// The gender category for the age groups
 	// Groups exist for "universal", "male" and "female"
 	Gender Gender
-	// The type of age group
+	// The type of categoryGroup
 	// The type can be "Juniors" or "Masters", e.g. Under 13, Over 35, etc.
-	AgeGroupType AgeGroupType
+	CategoryGroupType CategoryGroupType
 	// OperativeDate is the date used to determine the age
 	// category for a junior athlete, as per the rules of your competition.
 	//
@@ -83,10 +86,10 @@ type AgeGroups struct {
 	// for junior age groups would be 31st August 2019.
 	OperativeDate time.Time
 	// CutOffDate is the date at which an athlete must be under
-	// the age of the final age group in the Groups list below, when the
-	// AgeGroupType is "Juniors".
+	// the age of the final age group in the Ages list below, when the
+	// CategoryGroupType is "Juniors".
 	// If the value is not set, the OperativeDate applies.
-	// If the AgeGroupType is "Masters" and the CutOffDate is set, it is ignored.
+	// If the CategoryGroupType is "Masters" and the CutOffDate is set, it is ignored.
 	//
 	// This option exists because certain competitions use a different date
 	// to the operative date to determine the end of the junior age groups; e.g:
@@ -95,25 +98,38 @@ type AgeGroups struct {
 	// who are 17 or over on 31st August within the Competition Year, but
 	// Under 20 on 31st December in the calendar year of competition."
 	CutOffDate *time.Time
-	// The range of age groups available
+	// The range of ages in the group
 	// e.g. []int{13, 15, 17, 20}
-	// Combined with the AgeGroupType defined above to determine membership;
+	// Combined with the CategoryGroupType defined above to determine membership;
 	// e.g. Under 15 would contain athletes aged 13 and 14
-	Groups []int
+	Ages []int
 }
 
 // AgeCategory returns a string describing the age category for an athlete with
-// the specified Gender and Date Of Birth, given the supplied AgeGroup
-// constraints.
+// the specified Gender and Date Of Birth, given the constraints in the
+// supplied category group(s).
 //
-// If no AgeGroup constraints are supplied, the athlete will always be classed
-// in the "Senior" category
+// If no category groups are supplied, the athlete will always be classed
+// in the "Senior" category.
 //
-func AgeCategory(gender Gender, birthYear int, birthMonth time.Month, birthDay int, ageGroups ...*AgeGroups) string {
-	dob := time.Date(birthYear, birthMonth, birthDay, 0, 0, 0, 0, Location)
+// Junior formats appear as J + {Gender} + {Age Category},
+// e.g. "JF13" for Under 13 Girls
+//
+// Masters formats appear as {Gender} + V + {Age Category},
+// e.g. "MV40" for Men Over 40
+//
+// Senior categories are returned as {Gender} + SEN,
+// e.g. "FSEN" for Senior Women
+//
+// For Universal races (i.e. where there is no classification by gender), the
+// gender element is omitted.
+// e.g. "V60" for People Over 60
+func AgeCategory(gender Gender, dateOfBirth time.Time, categoryGroups ...*categoryGroup) string {
+	// Normalize date of birth to UTC
+	dob := time.Date(dateOfBirth.Year(), dateOfBirth.Month(), dateOfBirth.Day(), 0, 0, 0, 0, Location)
 
-	for _, ageGroup := range ageGroups {
-		if s := ageGroup.categorize(gender, dob); s != nil {
+	for _, categoryGroup := range categoryGroups {
+		if s := categoryGroup.categorize(gender, dob); s != nil {
 			return *s
 		}
 	}
@@ -121,40 +137,59 @@ func AgeCategory(gender Gender, birthYear int, birthMonth time.Month, birthDay i
 	return fmt.Sprintf("%sSEN", gender.Character())
 }
 
-func (a AgeGroups) categorize(gender Gender, dob time.Time) *string {
-	if a.Gender != gender {
+// NewCategoryGroup creates a categoryGroup and returns its reference
+// The meanings of each parameter are explained in the categoryGroup struct
+func NewCategoryGroup(gender Gender, categoryGroupType CategoryGroupType, operativeDate time.Time, cutOffDate *time.Time, ages []int) *categoryGroup {
+	// Normalize dates to UTC
+	operativeDate = time.Date(operativeDate.Year(), operativeDate.Month(), operativeDate.Day(), 0, 0, 0, 0, Location)
+	if cutOffDate != nil {
+		d := time.Date(cutOffDate.Year(), cutOffDate.Month(), cutOffDate.Day(), 0, 0, 0, 0, Location)
+		cutOffDate = &d
+	}
+
+	return &categoryGroup{
+		Gender:            gender,
+		CategoryGroupType: categoryGroupType,
+		OperativeDate:     operativeDate,
+		CutOffDate:        cutOffDate,
+		Ages:              ages,
+	}
+}
+
+func (c *categoryGroup) categorize(gender Gender, dob time.Time) *string {
+	if c.Gender != gender {
 		return nil
 	}
 
-	if a.AgeGroupType == Juniors {
-		return a.categorizeUnder(gender, dob)
+	if c.CategoryGroupType == Juniors {
+		return c.categorizeJuniors(gender, dob)
 	}
 
-	return a.categorizeOver(gender, dob)
+	return c.categorizeMasters(gender, dob)
 }
 
-func (a AgeGroups) categorizeUnder(gender Gender, dob time.Time) *string {
-	sort.Ints(a.Groups)
+func (c *categoryGroup) categorizeJuniors(gender Gender, dob time.Time) *string {
+	sort.Ints(c.Ages)
 
-	if a.CutOffDate != nil {
-		if ageOnDate(*a.CutOffDate, dob) >= a.Groups[len(a.Groups)-1] {
+	if c.CutOffDate != nil {
+		if ageOnDate(*c.CutOffDate, dob) >= c.Ages[len(c.Ages)-1] {
 			return nil
 		}
 	}
 
-	age := ageOnDate(a.OperativeDate, dob)
+	age := ageOnDate(c.OperativeDate, dob)
 
-	if age > a.Groups[len(a.Groups)-1] {
+	if age > c.Ages[len(c.Ages)-1] {
 		return nil
 	}
 
-	if a.CutOffDate != nil &&
-		age == a.Groups[len(a.Groups)-1] {
+	if c.CutOffDate != nil &&
+		age == c.Ages[len(c.Ages)-1] {
 		s := fmt.Sprintf("J%s%d", gender.Character(), age)
 		return &s
 	}
 
-	for _, ageGroup := range a.Groups {
+	for _, ageGroup := range c.Ages {
 		if age < ageGroup {
 			s := fmt.Sprintf("J%s%d", gender.Character(), ageGroup)
 			return &s
@@ -164,17 +199,17 @@ func (a AgeGroups) categorizeUnder(gender Gender, dob time.Time) *string {
 	return nil
 }
 
-func (a AgeGroups) categorizeOver(gender Gender, dob time.Time) *string {
-	sort.Ints(a.Groups)
+func (c *categoryGroup) categorizeMasters(gender Gender, dob time.Time) *string {
+	sort.Ints(c.Ages)
 
-	age := ageOnDate(a.OperativeDate, dob)
+	age := ageOnDate(c.OperativeDate, dob)
 
-	if age < a.Groups[0] {
+	if age < c.Ages[0] {
 		return nil
 	}
 
-	for i := len(a.Groups) - 1; i >= 0; i-- {
-		ageGroup := a.Groups[i]
+	for i := len(c.Ages) - 1; i >= 0; i-- {
+		ageGroup := c.Ages[i]
 		if age >= ageGroup {
 			s := fmt.Sprintf("%sV%d", gender.Character(), ageGroup)
 			return &s
